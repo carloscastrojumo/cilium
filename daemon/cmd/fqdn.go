@@ -547,8 +547,13 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 		defer updateCancel()
 		updateStart := time.Now()
 
-		log.Info("Response IPs to update ", len(responseIPs))
 		identifier := rand.Intn(100000000)
+
+		log.WithFields(logrus.Fields{
+			"identifier":          identifier,
+			"numberOfIpsToUpdate": len(responseIPs),
+		}).Info("Response IPs to update")
+		
 		wg, usedIdentities, newlyAllocatedIdentities, err := d.dnsNameManager.UpdateGenerateDNS(updateCtx, lookupTime, identifier, map[string]*fqdn.DNSIPRecords{
 			qname: {
 				IPs: responseIPs,
