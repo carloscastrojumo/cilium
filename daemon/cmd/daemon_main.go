@@ -921,6 +921,7 @@ func initializeFlags() {
 	option.BindEnv(option.ToFQDNsIdleConnectionGracePeriod)
 
 	flags.DurationVar(&option.Config.FQDNProxyResponseMaxDelay, option.FQDNProxyResponseMaxDelay, 100*time.Millisecond, "The maximum time the DNS proxy holds an allowed DNS response before sending it along. Responses are sent as soon as the datapath is updated with the new IP information.")
+	log.Info("DURATION ", &option.Config.FQDNProxyResponseMaxDelay, option.FQDNProxyResponseMaxDelay)
 	option.BindEnv(option.FQDNProxyResponseMaxDelay)
 
 	flags.Int(option.FQDNRegexCompileLRUSize, defaults.FQDNRegexCompileLRUSize, "Size of the FQDN regex compilation LRU. Useful for heavy but repeated DNS L7 rules with MatchName or MatchPattern")
