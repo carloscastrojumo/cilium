@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/spf13/viper"
 	"math/rand"
 	"net"
 	"os"
@@ -546,9 +545,6 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 			"numberOfIpsToUpdate": len(responseIPs),
 			"ips":                 responseIPs,
 		}).Info("Updating DNS name in cache from response to query")
-
-		duration, _ := RootCmd.Flags().GetDuration(option.FQDNProxyResponseMaxDelay)
-		log.Info("VIPER DURATION %v %v ", viper.GetDuration(option.FQDNProxyResponseMaxDelay), duration)
 
 		updateCtx, updateCancel := context.WithTimeout(context.TODO(), option.Config.FQDNProxyResponseMaxDelay)
 		defer updateCancel()
