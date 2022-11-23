@@ -546,6 +546,7 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 		defer updateCancel()
 		updateStart := time.Now()
 
+		log.Info("Response IPs to update ", len(responseIPs))
 		wg, usedIdentities, newlyAllocatedIdentities, err := d.dnsNameManager.UpdateGenerateDNS(updateCtx, lookupTime, map[string]*fqdn.DNSIPRecords{
 			qname: {
 				IPs: responseIPs,

@@ -270,7 +270,7 @@ func (n *NameManager) updateIPsForName(lookupTime time.Time, dnsName string, new
 		"lookupTime":   lookupTime,
 		"sortedNewIps": sortedNewIPs,
 		"duration":     time.Now().Sub(start),
-	}).Info("Update IPs for name %s", dnsName)
+	}).Info("Update IPs for name ", dnsName)
 
 	// The 0 checks below account for an unlike race condition where this
 	// function is called with already expired data and if other cache data
