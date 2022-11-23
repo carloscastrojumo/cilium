@@ -143,20 +143,32 @@ func (n *NameManager) UpdateGenerateDNS(ctx context.Context, lookupTime time.Tim
 	// Update IPs in n
 	start := time.Now()
 	fqdnSelectorsToUpdate, updatedDNSNames := n.updateDNSIPs(lookupTime, updatedDNSIPs, identifier)
+	duration := time.Now().Sub(start)
 	for dnsName, IPs := range updatedDNSNames {
 		log.WithFields(logrus.Fields{
 			"identifier":            identifier,
 			"matchName":             dnsName,
 			"IPs":                   IPs,
-			"duration":              time.Now().Sub(start),
+			"duration":              duration,
 			"fqdnSelectorsToUpdate": fqdnSelectorsToUpdate,
 		}).Info("Updated FQDN with new IPs")
 	}
 
+	start = time.Now()
 	namesMissingIPs, selectorIPMapping := n.generateSelectorUpdates(fqdnSelectorsToUpdate)
+	duration = time.Now().Sub(start)
 	if len(namesMissingIPs) != 0 {
-		log.WithField(logfields.DNSName, namesMissingIPs).
-			Debug("No IPs to insert when generating DNS name selected by ToFQDN rule")
+		log.WithFields(logrus.Fields{
+			"identifier":      identifier,
+			"duration":        duration,
+			logfields.DNSName: namesMissingIPs,
+		}).Info("No IPs to insert when generating DNS name selected by ToFQDN rule")
+	} else {
+		log.WithFields(logrus.Fields{
+			"identifier":      identifier,
+			"duration":        duration,
+			logfields.DNSName: namesMissingIPs,
+		}).Info("IPs inserted when generating DNS name selected by ToFQDN rule")
 	}
 
 	return n.config.UpdateSelectors(ctx, selectorIPMapping, namesMissingIPs)
