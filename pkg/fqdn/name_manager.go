@@ -149,7 +149,7 @@ func (n *NameManager) UpdateGenerateDNS(ctx context.Context, lookupTime time.Tim
 			"IPs":                   IPs,
 			"duration":              time.Now().Sub(start),
 			"fqdnSelectorsToUpdate": fqdnSelectorsToUpdate,
-		}).Debug("Updated FQDN with new IPs")
+		}).Info("Updated FQDN with new IPs")
 	}
 
 	namesMissingIPs, selectorIPMapping := n.generateSelectorUpdates(fqdnSelectorsToUpdate)
@@ -217,7 +217,7 @@ perDNSName:
 				"dnsName":   dnsName,
 				"lookupIPs": lookupIPs,
 				"duration":  time.Now().Sub(start),
-			}).Debug("FQDN: IPs didn't change for DNS name")
+			}).Info("FQDN: IPs didn't change for DNS name")
 			continue perDNSName
 		}
 
@@ -270,7 +270,7 @@ func (n *NameManager) updateIPsForName(lookupTime time.Time, dnsName string, new
 		"lookupTime":   lookupTime,
 		"sortedNewIps": sortedNewIPs,
 		"duration":     time.Now().Sub(start),
-	}).Debug("Update IPs for name")
+	}).Info("Update IPs for name %s", dnsName)
 
 	// The 0 checks below account for an unlike race condition where this
 	// function is called with already expired data and if other cache data
