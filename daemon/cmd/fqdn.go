@@ -538,22 +538,17 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 			ep.SyncEndpointHeaderFile()
 		}
 
+		identifier := rand.Intn(100000000)
 		log.WithFields(logrus.Fields{
-			"qname": qname,
-			"ips":   responseIPs,
-		}).Debug("Updating DNS name in cache from response to to query")
+			"qname":               qname,
+			"numberOfIpsToUpdate": len(responseIPs),
+			"ips":                 responseIPs,
+		}).Info("Updating DNS name in cache from response to query")
 
 		updateCtx, updateCancel := context.WithTimeout(context.TODO(), option.Config.FQDNProxyResponseMaxDelay)
 		defer updateCancel()
 		updateStart := time.Now()
 
-		identifier := rand.Intn(100000000)
-
-		log.WithFields(logrus.Fields{
-			"identifier":          identifier,
-			"numberOfIpsToUpdate": len(responseIPs),
-		}).Info("Response IPs to update")
-		
 		wg, usedIdentities, newlyAllocatedIdentities, err := d.dnsNameManager.UpdateGenerateDNS(updateCtx, lookupTime, identifier, map[string]*fqdn.DNSIPRecords{
 			qname: {
 				IPs: responseIPs,
@@ -571,7 +566,7 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 
 		select {
 		case <-updateCtx.Done():
-			log.Error("Timed out waiting for datapath updates of FQDN IP information; returning response")
+			log.Error("Timed out waiting for datapath updates of FQDN IP information; returning response ", identifier)
 			metrics.ProxyDatapathUpdateTimeout.Inc()
 		case <-updateComplete:
 		}
