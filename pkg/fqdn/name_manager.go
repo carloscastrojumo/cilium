@@ -141,11 +141,13 @@ func (n *NameManager) UpdateGenerateDNS(ctx context.Context, lookupTime time.Tim
 	defer n.RWMutex.Unlock()
 
 	// Update IPs in n
+	start := time.Now()
 	fqdnSelectorsToUpdate, updatedDNSNames := n.updateDNSIPs(lookupTime, updatedDNSIPs)
 	for dnsName, IPs := range updatedDNSNames {
 		log.WithFields(logrus.Fields{
 			"matchName":             dnsName,
 			"IPs":                   IPs,
+			"duration":              time.Now().Sub(start),
 			"fqdnSelectorsToUpdate": fqdnSelectorsToUpdate,
 		}).Debug("Updated FQDN with new IPs")
 	}
@@ -206,6 +208,7 @@ func (n *NameManager) updateDNSIPs(lookupTime time.Time, updatedDNSIPs map[strin
 
 perDNSName:
 	for dnsName, lookupIPs := range updatedDNSIPs {
+		start := time.Now()
 		updated := n.updateIPsForName(lookupTime, dnsName, lookupIPs.IPs, lookupIPs.TTL)
 
 		// The IPs didn't change. No more to be done for this dnsName
@@ -213,6 +216,7 @@ perDNSName:
 			log.WithFields(logrus.Fields{
 				"dnsName":   dnsName,
 				"lookupIPs": lookupIPs,
+				"duration":  time.Now().Sub(start),
 			}).Debug("FQDN: IPs didn't change for DNS name")
 			continue perDNSName
 		}
@@ -250,6 +254,7 @@ func (n *NameManager) generateSelectorUpdates(fqdnSelectors map[api.FQDNSelector
 // newIPs.
 // updated is true when the new IPs differ from the old IPs
 func (n *NameManager) updateIPsForName(lookupTime time.Time, dnsName string, newIPs []net.IP, ttl int) (updated bool) {
+	start := time.Now()
 	cacheIPs := n.cache.Lookup(dnsName)
 
 	if n.config.MinTTL > ttl {
@@ -258,6 +263,14 @@ func (n *NameManager) updateIPsForName(lookupTime time.Time, dnsName string, new
 
 	n.cache.Update(lookupTime, dnsName, newIPs, ttl)
 	sortedNewIPs := n.cache.Lookup(dnsName) // DNSCache returns IPs sorted
+
+	log.WithFields(logrus.Fields{
+		"dnsName":      dnsName,
+		"cacheIPs":     cacheIPs,
+		"lookupTime":   lookupTime,
+		"sortedNewIps": sortedNewIPs,
+		"duration":     time.Now().Sub(start),
+	}).Debug("Update IPs for name")
 
 	// The 0 checks below account for an unlike race condition where this
 	// function is called with already expired data and if other cache data
