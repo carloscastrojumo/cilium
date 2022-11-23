@@ -208,6 +208,7 @@ func (n *NameManager) updateDNSIPs(lookupTime time.Time, updatedDNSIPs map[strin
 	affectedSelectors = make(map[api.FQDNSelector]struct{}, len(updatedDNSIPs))
 
 perDNSName:
+
 	for dnsName, lookupIPs := range updatedDNSIPs {
 		start := time.Now()
 		updated := n.updateIPsForName(lookupTime, dnsName, lookupIPs.IPs, lookupIPs.TTL, identifier)
@@ -239,6 +240,12 @@ perDNSName:
 				affectedSelectors[fqdnSel] = struct{}{}
 			}
 		}
+		log.WithFields(logrus.Fields{
+			"identifier":   identifier,
+			"dnsName":      dnsName,
+			"updatedNames": updatedNames[dnsName],
+			"duration":     time.Now().Sub(start),
+		}).Info("Names updated")
 	}
 
 	return affectedSelectors, updatedNames

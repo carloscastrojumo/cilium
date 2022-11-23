@@ -540,6 +540,7 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 
 		identifier := rand.Intn(100000000)
 		log.WithFields(logrus.Fields{
+			"identifier":          identifier,
 			"qname":               qname,
 			"numberOfIpsToUpdate": len(responseIPs),
 			"ips":                 responseIPs,
