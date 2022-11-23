@@ -550,6 +550,7 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 		defer updateCancel()
 		updateStart := time.Now()
 
+		start := time.Now()
 		wg, usedIdentities, newlyAllocatedIdentities, err := d.dnsNameManager.UpdateGenerateDNS(updateCtx, lookupTime, identifier, map[string]*fqdn.DNSIPRecords{
 			qname: {
 				IPs: responseIPs,
@@ -558,6 +559,12 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 		if err != nil {
 			log.WithError(err).Error("error updating internal DNS cache for rule generation")
 		}
+
+		log.WithFields(logrus.Fields{
+			"identifier": identifier,
+			"qname":      qname,
+			"duration":   time.Now().Sub(start),
+		}).Info("Update Generate DNS completed")
 
 		updateComplete := make(chan struct{})
 		go func(wg *sync.WaitGroup, done chan struct{}) {
