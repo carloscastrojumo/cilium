@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
 	"os"
 	"regexp"
@@ -538,20 +537,16 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 			ep.SyncEndpointHeaderFile()
 		}
 
-		identifier := rand.Intn(100000000)
 		log.WithFields(logrus.Fields{
-			"identifier":          identifier,
-			"qname":               qname,
-			"numberOfIpsToUpdate": len(responseIPs),
-			"ips":                 responseIPs,
-		}).Info("Updating DNS name in cache from response to query")
+			"qname": qname,
+			"ips":   responseIPs,
+		}).Debug("Updating DNS name in cache from response to query")
 
 		updateCtx, updateCancel := context.WithTimeout(context.TODO(), option.Config.FQDNProxyResponseMaxDelay)
 		defer updateCancel()
 		updateStart := time.Now()
 
-		start := time.Now()
-		wg, usedIdentities, newlyAllocatedIdentities, err := d.dnsNameManager.UpdateGenerateDNS(updateCtx, lookupTime, identifier, map[string]*fqdn.DNSIPRecords{
+		wg, usedIdentities, newlyAllocatedIdentities, err := d.dnsNameManager.UpdateGenerateDNS(updateCtx, lookupTime, map[string]*fqdn.DNSIPRecords{
 			qname: {
 				IPs: responseIPs,
 				TTL: int(TTL),
@@ -559,12 +554,6 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 		if err != nil {
 			log.WithError(err).Error("error updating internal DNS cache for rule generation")
 		}
-
-		log.WithFields(logrus.Fields{
-			"identifier": identifier,
-			"qname":      qname,
-			"duration":   time.Now().Sub(start),
-		}).Info("Update Generate DNS completed")
 
 		updateComplete := make(chan struct{})
 		go func(wg *sync.WaitGroup, done chan struct{}) {
@@ -574,7 +563,7 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 
 		select {
 		case <-updateCtx.Done():
-			log.Error("Timed out waiting for datapath updates of FQDN IP information; returning response ", identifier)
+			log.Error("Timed out waiting for datapath updates of FQDN IP information; returning response")
 			metrics.ProxyDatapathUpdateTimeout.Inc()
 		case <-updateComplete:
 		}

@@ -136,39 +136,24 @@ func (n *NameManager) GetDNSCache() *DNSCache {
 
 // UpdateGenerateDNS inserts the new DNS information into the cache. If the IPs
 // have changed for a name they will be reflected in updatedDNSIPs.
-func (n *NameManager) UpdateGenerateDNS(ctx context.Context, lookupTime time.Time, identifier int, updatedDNSIPs map[string]*DNSIPRecords) (wg *sync.WaitGroup, usedIdentities []*identity.Identity, newlyAllocatedIdentities map[string]*identity.Identity, err error) {
+func (n *NameManager) UpdateGenerateDNS(ctx context.Context, lookupTime time.Time, updatedDNSIPs map[string]*DNSIPRecords) (wg *sync.WaitGroup, usedIdentities []*identity.Identity, newlyAllocatedIdentities map[string]*identity.Identity, err error) {
 	n.RWMutex.Lock()
 	defer n.RWMutex.Unlock()
 
 	// Update IPs in n
-	start := time.Now()
-	fqdnSelectorsToUpdate, updatedDNSNames := n.updateDNSIPs(lookupTime, updatedDNSIPs, identifier)
-	duration := time.Now().Sub(start)
+	fqdnSelectorsToUpdate, updatedDNSNames := n.updateDNSIPs(lookupTime, updatedDNSIPs)
 	for dnsName, IPs := range updatedDNSNames {
 		log.WithFields(logrus.Fields{
-			"identifier":            identifier,
 			"matchName":             dnsName,
 			"IPs":                   IPs,
-			"duration":              duration,
 			"fqdnSelectorsToUpdate": fqdnSelectorsToUpdate,
-		}).Info("Updated FQDN with new IPs")
+		}).Debug("Updated FQDN with new IPs")
 	}
 
-	start = time.Now()
 	namesMissingIPs, selectorIPMapping := n.generateSelectorUpdates(fqdnSelectorsToUpdate)
-	duration = time.Now().Sub(start)
 	if len(namesMissingIPs) != 0 {
-		log.WithFields(logrus.Fields{
-			"identifier":      identifier,
-			"duration":        duration,
-			logfields.DNSName: namesMissingIPs,
-		}).Info("No IPs to insert when generating DNS name selected by ToFQDN rule")
-	} else {
-		log.WithFields(logrus.Fields{
-			"identifier":      identifier,
-			"duration":        duration,
-			logfields.DNSName: namesMissingIPs,
-		}).Info("IPs inserted when generating DNS name selected by ToFQDN rule")
+		log.WithField(logfields.DNSName, namesMissingIPs).
+			Debug("No IPs to insert when generating DNS name selected by ToFQDN rule")
 	}
 
 	return n.config.UpdateSelectors(ctx, selectorIPMapping, namesMissingIPs)
@@ -215,24 +200,20 @@ func (n *NameManager) CompleteBootstrap() {
 // affectedSelectors: a set of all FQDNSelectors which match DNS Names whose
 // corresponding set of IPs has changed.
 // updatedNames: a map of DNS names to all the valid IPs we store for each.
-func (n *NameManager) updateDNSIPs(lookupTime time.Time, updatedDNSIPs map[string]*DNSIPRecords, identifier int) (affectedSelectors map[api.FQDNSelector]struct{}, updatedNames map[string][]net.IP) {
+func (n *NameManager) updateDNSIPs(lookupTime time.Time, updatedDNSIPs map[string]*DNSIPRecords) (affectedSelectors map[api.FQDNSelector]struct{}, updatedNames map[string][]net.IP) {
 	updatedNames = make(map[string][]net.IP, len(updatedDNSIPs))
 	affectedSelectors = make(map[api.FQDNSelector]struct{}, len(updatedDNSIPs))
 
 perDNSName:
-
 	for dnsName, lookupIPs := range updatedDNSIPs {
-		start := time.Now()
-		updated := n.updateIPsForName(lookupTime, dnsName, lookupIPs.IPs, lookupIPs.TTL, identifier)
+		updated := n.updateIPsForName(lookupTime, dnsName, lookupIPs.IPs, lookupIPs.TTL)
 
 		// The IPs didn't change. No more to be done for this dnsName
 		if !updated && n.bootstrapCompleted {
 			log.WithFields(logrus.Fields{
-				"identifier": identifier,
-				"dnsName":    dnsName,
-				"lookupIPs":  lookupIPs,
-				"duration":   time.Now().Sub(start),
-			}).Info("FQDN: IPs didn't change for DNS name")
+				"dnsName":   dnsName,
+				"lookupIPs": lookupIPs,
+			}).Debug("FQDN: IPs didn't change for DNS name")
 			continue perDNSName
 		}
 
@@ -252,12 +233,6 @@ perDNSName:
 				affectedSelectors[fqdnSel] = struct{}{}
 			}
 		}
-		log.WithFields(logrus.Fields{
-			"identifier":   identifier,
-			"dnsName":      dnsName,
-			"updatedNames": updatedNames[dnsName],
-			"duration":     time.Now().Sub(start),
-		}).Info("Names updated")
 	}
 
 	return affectedSelectors, updatedNames
@@ -274,8 +249,7 @@ func (n *NameManager) generateSelectorUpdates(fqdnSelectors map[api.FQDNSelector
 // updateIPsName will update the IPs for dnsName. It always retains a copy of
 // newIPs.
 // updated is true when the new IPs differ from the old IPs
-func (n *NameManager) updateIPsForName(lookupTime time.Time, dnsName string, newIPs []net.IP, ttl int, identifier int) (updated bool) {
-	start := time.Now()
+func (n *NameManager) updateIPsForName(lookupTime time.Time, dnsName string, newIPs []net.IP, ttl int) (updated bool) {
 	cacheIPs := n.cache.Lookup(dnsName)
 
 	if n.config.MinTTL > ttl {
@@ -284,15 +258,6 @@ func (n *NameManager) updateIPsForName(lookupTime time.Time, dnsName string, new
 
 	n.cache.Update(lookupTime, dnsName, newIPs, ttl)
 	sortedNewIPs := n.cache.Lookup(dnsName) // DNSCache returns IPs sorted
-
-	log.WithFields(logrus.Fields{
-		"identifier":   identifier,
-		"dnsName":      dnsName,
-		"cacheIPs":     cacheIPs,
-		"lookupTime":   lookupTime,
-		"sortedNewIps": sortedNewIPs,
-		"duration":     time.Now().Sub(start),
-	}).Info("Update IPs for name ", dnsName)
 
 	// The 0 checks below account for an unlike race condition where this
 	// function is called with already expired data and if other cache data
