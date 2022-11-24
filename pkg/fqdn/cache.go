@@ -5,6 +5,7 @@ package fqdn
 
 import (
 	"encoding/json"
+	"github.com/sirupsen/logrus"
 	"net"
 	"regexp"
 	"sort"
@@ -892,6 +893,7 @@ func (zombies *DNSZombieMappings) GC() (alive, dead []*DNSZombieMapping) {
 	}
 
 	if zombies.perHostLimit > 0 {
+		log.Info("ZOMBIES: ", zombies)
 		warnActiveDNSEntries := false
 		deadIdx := len(dead)
 
@@ -919,6 +921,11 @@ func (zombies *DNSZombieMappings) GC() (alive, dead []*DNSZombieMapping) {
 				possibleAlive[z] = struct{}{}
 			}
 			if dead[len(dead)-1].AliveAt.IsZero() {
+				log.WithFields(logrus.Fields{
+					"perHostLimit":    zombies.perHostLimit,
+					"overLimit":       overLimit,
+					"aliveIpsForName": aliveIPsForName,
+				}).Info("Alive PS for name")
 				warnActiveDNSEntries = true
 			}
 		}
