@@ -573,7 +573,7 @@ func (d *Daemon) notifyOnDNSMsg(lookupTime time.Time, ep *endpoint.Endpoint, epI
 			logfields.EndpointID: ep.GetID(),
 			"qname":              qname,
 			"timeout":            option.Config.FQDNProxyResponseMaxDelay,
-		}).Info("Waited for endpoints to regenerate due to a DNS response")
+		}).Debug("Waited for endpoints to regenerate due to a DNS response")
 
 		// Add new identities to the ipcache after the wait for the policy updates above
 		d.ipcache.UpsertGeneratedIdentities(newlyAllocatedIdentities, usedIdentities)
